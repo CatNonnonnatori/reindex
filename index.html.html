@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CAT LOUNGE nonnon｜在庫・発注管理</title>
+<style>
+:root{--ink:#263238;--muted:#68777d;--bg:#f5f7f6;--card:#fff;--line:#e2e8e5;--accent:#477b68;--red:#c94c4c;--amber:#a96a16}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line);padding:16px max(16px,calc((100% - 1100px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:0;z-index:5}
+.brand{font-weight:800;font-size:18px}.brand small{display:block;color:var(--muted);font-size:11px;font-weight:500}
+nav{display:flex;gap:6px;flex-wrap:wrap}button,.btn{border:0;border-radius:10px;padding:11px 14px;background:var(--accent);color:white;font-weight:700;cursor:pointer;font-size:14px}
+button.secondary{background:#edf2ef;color:var(--ink)}button.danger{background:#fff0f0;color:var(--red)}button:disabled{opacity:.45;cursor:not-allowed}
+main{max-width:1100px;margin:22px auto;padding:0 16px}.page{display:none}.page.active{display:block}h1{font-size:24px;margin:0 0 6px}h2{font-size:18px;margin:0 0 14px}.sub{color:var(--muted);margin:0 0 20px;font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0}.stat,.panel,.item{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:16px}.stat b{display:block;font-size:27px;margin-top:6px}.stat span{font-size:12px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.row{display:flex;align-items:center;justify-content:space-between;gap:12px}.muted{color:var(--muted);font-size:12px}.pill{font-size:11px;padding:4px 8px;border-radius:99px;background:#edf2ef;color:#47685b}.pill.warn{background:#fff1dc;color:#995e0b}.pill.bad{background:#ffe9e9;color:#b33e3e}
+input,select{width:100%;padding:11px;border:1px solid #ccd7d1;border-radius:9px;font-size:16px;background:white;color:var(--ink)}label{font-size:12px;color:var(--muted);display:block;margin:10px 0 5px}.formgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.productlist{display:grid;gap:9px}.product{display:grid;grid-template-columns:minmax(0,1fr) 105px 90px;align-items:center;gap:10px;background:white;border:1px solid var(--line);padding:12px;border-radius:12px}.product strong{display:block}.product input{padding:9px}.count-input{display:flex;align-items:center;gap:5px;min-width:0}.count-input input{min-width:0;width:100%}.count-input span{font-size:12px;color:var(--muted);white-space:nowrap}.empty{padding:24px;text-align:center;color:var(--muted);background:white;border:1px dashed #ccd7d1;border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:14px}.auto-priority{font-size:20px;letter-spacing:1px;white-space:nowrap}td,th{padding:11px 8px;border-bottom:1px solid var(--line);text-align:left}th{font-size:12px;color:var(--muted)}
+a{color:var(--accent);font-weight:700}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.toolbar input{max-width:300px}.notice{background:#edf5f0;border-radius:12px;padding:12px;font-size:13px;margin:12px 0}
+footer{text-align:center;color:var(--muted);font-size:11px;padding:30px}
+@media(max-width:650px){header{align-items:flex-start;flex-direction:column}nav{width:100%}nav button{flex:1;padding:10px 6px;font-size:12px}.cards{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.product{grid-template-columns:minmax(0,1fr) 90px}.product .status{grid-column:1/-1}.formgrid{grid-template-columns:1fr 1fr}h1{font-size:21px}}
+
+#productList tr.dragging{opacity:.35}
+#productList tr.drag-over{outline:2px dashed var(--accent);outline-offset:-2px;background:rgba(30,120,80,.08)}
+.drag-handle{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;font-size:22px;line-height:1;padding:8px 12px!important}
+.drag-handle:active{cursor:grabbing}
+</style></head>
+<body>
+<header><div class="brand">CAT LOUNGE nonnon<small>在庫・発注管理</small></div><nav>
+<button class="secondary" data-page="home">ホーム</button><button class="secondary" data-page="check">在庫チェック</button><button class="secondary" data-page="orders">発注リスト</button><button class="secondary" data-page="products">商品管理</button><button class="secondary" data-page="history">履歴</button>
+</nav></header>
+<main>
+<section id="home" class="page active"><h1>在庫管理ホーム</h1><p class="sub">週2回の在庫チェックと発注を、タブレットで簡単に。</p>
+<div class="cards"><div class="stat"><span>登録商品</span><b id="statProducts">0</b></div><div class="stat"><span>発注対象</span><b id="statOrders">0</b></div><div class="stat"><span>今回のチェック</span><b id="statChecked">未実施</b></div></div>
+<div class="grid"><div class="panel"><h2>在庫チェック</h2><p class="muted">商品ごとに設定した発注基準に達すると、自動的に発注対象になります。</p><button onclick="show('check')">チェックを始める</button></div><div class="panel"><h2>発注作業</h2><p class="muted">必要な商品・発注数を確認し、登録した購入ページへ移動できます。</p><button onclick="show('orders')">発注リストを見る</button></div></div>
+<div class="notice">発注ラインは商品ごとに設定できます（割合指定・残数指定）。発注数は「定数 − 残数」です。箱・ケース単位の商品は入数に応じて切り上げます。</div>
+</section>
+<section id="check" class="page"><h1>在庫チェック</h1><p class="sub">実際に数えた残数だけを入力してください。保存すると今回の在庫として反映されます。</p><div class="toolbar"><input id="checkSearch" placeholder="商品名で検索" oninput="renderCheck()"><select id="checkCat" onchange="renderCheck()"><option value="">すべてのカテゴリー</option></select></div><div id="checkList" class="productlist"></div><div class="actions"><button onclick="saveCheck()">在庫チェックを保存</button><button class="secondary" onclick="show('orders')">発注リストへ</button></div></section>
+<section id="orders" class="page"><h1>発注リスト</h1><p class="sub">商品ごとに設定した発注基準に達した商品を表示します。</p><div class="actions"><button class="danger" onclick="clearOrderList()">発注リストを一括削除</button></div><div id="orderList"></div><div class="actions"><button class="secondary" onclick="show('check')">在庫チェックに戻る</button></div></section>
+<section id="products" class="page"><h1>商品管理</h1><p class="sub">商品は1つずつ登録できます。購入先URLを登録すると発注リストから直接開けます。</p>
+
+<div class="panel" style="margin-bottom:16px">
+  <h2>データ移行・バックアップ</h2>
+  <p class="muted">このPCに保存されている商品・カテゴリー・在庫数・履歴をファイルに保存できます。タブレットへ移すときは、PCで書き出したファイルをタブレットで読み込んでください。</p>
+  <div class="actions">
+    <button type="button" onclick="exportData()">データを書き出す</button>
+    <button type="button" class="secondary" onclick="document.getElementById('importDataFile').click()">データを読み込む</button>
+    <input id="importDataFile" type="file" accept=".json,application/json" style="display:none" onchange="importData(event)">
+  </div>
+</div>
+<div class="panel"><h2 id="formTitle">商品を登録</h2><input type="hidden" id="editId"><div class="formgrid">
+<div><label>商品名 *</label><input id="pName" placeholder="例：猫用ウェットフード"></div>
+<div><label>カテゴリー</label><select id="pCat"></select></div>
+<div><label>定数（通常確保したい数） *</label><input id="pTarget" type="number" min="0" step="0.1" value="10"></div>
+<div><label>現在の残数</label><input id="pStock" type="number" min="0" step="0.1" value="0"></div>
+<div><label>単位（既存から選択）</label>
+<select id="pUnit">
+<option>個</option><option>袋</option><option>箱</option><option>本</option><option>kg</option><option>パック</option><option>ケース</option>
+</select>
+<label style="margin-top:8px">その他の単位（自由入力・任意）</label>
+<input id="pUnitCustom" type="text" placeholder="例：g、mL、枚、セット など">
+<small class="muted">自由入力した場合は、上の選択より入力内容を優先します。</small></div>
+<div><label>購入単位あたりの入数（バラ数）</label><input id="pPack" type="number" min="1" value="1"></div>
+<div><label>単価（円・任意）</label><input id="pPrice" type="number" min="0" placeholder="0"></div>
+<div><label>購入先URL</label><input id="pUrl" type="url" placeholder="https://..."></div>
+<div><label>発注基準</label>
+<select id="pRuleType" onchange="updateRuleInput()"><option value="percent">定数に対する割合で指定</option><option value="quantity">残数で指定</option></select>
+<div id="pRuleInputWrap" style="margin-top:8px"><label id="pRuleValueLabel">発注ライン（％）</label><input id="pRuleValue" type="number" min="0" max="100" step="1" value="50"></div>
+<small class="muted" id="pRuleHelp">定数の50％未満になったら発注対象です。</small></div>
+<div><label>発注目安・メモ（任意）</label><input id="pGuide" type="text" placeholder="例：残り3袋になったら発注"></div>
+</div><div class="actions"><button onclick="saveProduct()">商品を保存</button><button class="secondary" onclick="clearForm()">入力をクリア</button></div></div>
+<div class="panel" style="margin-top:16px"><h2>カテゴリー管理</h2>
+<p class="muted">プルダウンからカテゴリーを選択して、名前変更・削除ができます。使用中のカテゴリーを削除すると、その商品は「その他」に移動します。</p>
+<div class="formgrid">
+<div><label>カテゴリーを選択</label><select id="categoryManageSelect"></select></div>
+<div><label>新しいカテゴリーを追加</label><div class="row" style="align-items:stretch"><input id="newCategory" placeholder="カテゴリー名"><button onclick="addCategory()">追加</button></div></div>
+</div>
+<div class="actions"><button class="secondary" onclick="renameSelectedCategory()">選択したカテゴリーの名前変更</button><button class="danger" id="deleteCategoryButton" onclick="deleteSelectedCategory()">選択したカテゴリーを削除</button></div>
+</div>
+<h2 style="margin-top:22px">登録済み商品</h2><div class="toolbar"><input id="productSearch" placeholder="商品名で検索" oninput="renderProducts()"></div><div id="productList"></div></section>
+<section id="history" class="page"><h1>履歴</h1><p class="sub">個人名は記録せず、日時と内容だけを保存します。</p><div id="historyList"></div></section>
+</main><footer>CAT LOUNGE nonnon 在庫・発注管理</footer>
+<script>
+const KEY='nonnon_inventory_v1';
+let db=JSON.parse(localStorage.getItem(KEY)||'{"products":[],"history":[],"lastCheck":null}');
+const DEFAULT_CATEGORIES=['ドリンク・飲料','食品・お菓子','猫用フード','猫用品・おもちゃ','トイレ・猫砂','清掃・衛生用品','店舗消耗品','その他'];
+db.categories=Array.isArray(db.categories)?db.categories:DEFAULT_CATEGORIES.slice();
+db.orderNotes=db.orderNotes||{};db.orderHidden=db.orderHidden||{};db.orderPriority=db.orderPriority||{};
+db.products.forEach(p=>{if(p.cat&&!db.categories.includes(p.cat))db.categories.push(p.cat);if(!p.ruleType)p.ruleType='percent';if(p.ruleValue===undefined||p.ruleValue===null)p.ruleValue=p.ruleType==='quantity'?1:50;});
+if(!db.categories.includes('その他'))db.categories.push('その他');
+function persist(){localStorage.setItem(KEY,JSON.stringify(db));refresh()}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function show(id){document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id===id));if(id==='check')renderCheck();if(id==='orders')renderOrders();if(id==='products'){renderProducts();renderCategories();renderCategorySelect();}if(id==='history')renderHistory();window.scrollTo(0,0)}
+document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>show(b.dataset.page));
+function ruleType(p){return p.ruleType==='quantity'?'quantity':'percent'}
+function ruleValue(p){let v=Number(p.ruleValue);return Number.isFinite(v)&&v>=0?v:(ruleType(p)==='quantity'?1:50)}
+function isOrderDue(p){let stock=Number(p.stock);return ruleType(p)==='quantity'?stock<=ruleValue(p):stock<Number(p.target)*ruleValue(p)/100}
+function ruleLabel(p){return ruleType(p)==='quantity'?`残数 ${ruleValue(p)}${p.unit} 以下`:`定数の${ruleValue(p)}％未満`}
+function need(p){let d=Math.max(0,Number(p.target)-Number(p.stock));return isOrderDue(p)?Math.ceil(d/Math.max(1,Number(p.pack)||1)):0}
+function autoPriority(p){let target=Number(p.target)||0,stock=Math.max(0,Number(p.stock)||0),ratio=target>0?stock/target:0;return ratio<=0.25?'★★★':ratio<=0.5?'★★☆':'★☆☆'}
+function updateRuleInput(){let type=document.getElementById('pRuleType').value,lab=document.getElementById('pRuleValueLabel'),input=document.getElementById('pRuleValue'),help=document.getElementById('pRuleHelp');if(type==='quantity'){lab.textContent='発注ライン（残数）';input.removeAttribute('max');input.step='0.1';help.textContent='残数が指定した数以下になったら発注対象です。'}else{lab.textContent='発注ライン（％）';input.max='100';input.step='1';help.textContent='残数が定数の指定割合未満になったら発注対象です。'}}
+function renderCategorySelect(selected){let sel=document.getElementById('pCat');if(!sel)return;let current=selected??sel.value;sel.innerHTML=db.categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');if(db.categories.includes(current))sel.value=current;else if(db.categories.length)sel.value=db.categories[0]}
+function renderCategories(selected){let sel=document.getElementById('categoryManageSelect');if(!sel)return;let current=selected??sel.value;sel.innerHTML=db.categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');if(db.categories.includes(current))sel.value=current;else if(db.categories.length)sel.value=db.categories[0];let del=document.getElementById('deleteCategoryButton');if(del)del.disabled=sel.value==='その他'}
+function addCategory(){let input=document.getElementById('newCategory'),name=input.value.trim();if(!name){alert('カテゴリー名を入力してください。');return}if(db.categories.includes(name)){alert('同じ名前のカテゴリーがすでにあります。');return}db.categories.push(name);input.value='';persist();renderCategorySelect(name);renderCategories(name)}
+function renameSelectedCategory(){let sel=document.getElementById('categoryManageSelect'),i=db.categories.indexOf(sel.value);if(i>=0)renameCategory(i)}
+function deleteSelectedCategory(){let sel=document.getElementById('categoryManageSelect'),i=db.categories.indexOf(sel.value);if(i>=0)deleteCategory(i)}
+function renameCategory(i){let old=db.categories[i];if(!old)return;let name=prompt('新しいカテゴリー名を入力してください。',old);if(name===null)return;name=name.trim();if(!name){alert('カテゴリー名を空にはできません。');return}if(name!==old&&db.categories.includes(name)){alert('同じ名前のカテゴリーがすでにあります。');return}db.categories[i]=name;db.products.forEach(p=>{if(p.cat===old)p.cat=name});persist();renderCategorySelect(name);renderCategories(name);renderProducts()}
+function deleteCategory(i){let name=db.categories[i];if(!name||name==='その他')return;if(!confirm(`「${name}」を削除しますか？\\nこのカテゴリーの商品は「その他」に移動します。`))return;db.products.forEach(p=>{if(p.cat===name)p.cat='その他'});db.categories=db.categories.filter((_,n)=>n!==i);persist();renderCategorySelect();renderCategories();renderProducts()}
+function refresh(){document.getElementById('statProducts').textContent=db.products.length;document.getElementById('statOrders').textContent=db.products.filter(p=>need(p)>0).length;document.getElementById('statChecked').textContent=db.lastCheck?new Date(db.lastCheck).toLocaleDateString('ja-JP'):'未実施';let cats=[...new Set(db.products.map(p=>p.cat))];let sel=document.getElementById('checkCat');let old=sel.value;sel.innerHTML='<option value="">すべてのカテゴリー</option>'+cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');sel.value=old;renderCategorySelect();renderCategories()}
+function renderCheck(){let q=(document.getElementById('checkSearch').value||'').toLowerCase(),cat=document.getElementById('checkCat').value;let arr=db.products.filter(p=>(!cat||p.cat===cat)&&p.name.toLowerCase().includes(q));document.getElementById('checkList').innerHTML=arr.length?arr.map(p=>`<div class="product"><div><strong>${esc(p.name)}</strong><span class="muted">${esc(p.cat)}・定数 ${p.target}${esc(p.unit)}・発注基準：${esc(ruleLabel(p))}</span>${p.guide?`<div class="muted">発注目安：${esc(p.guide)}</div>`:''}</div><div class="count-input"><input aria-label="${esc(p.name)}の残数（${esc(p.unit)}）" type="number" min="0" step="0.1" id="count_${p.id}" value="${p.stock}" placeholder="残数"><span>${esc(p.unit)}</span></div><div class="status">${need(p)>0?'<span class="pill warn">発注対象</span>':'<span class="pill">基準内</span>'}</div></div>`).join(''):'<div class="empty">商品がありません。先に商品管理から登録してください。</div>'}
+function saveCheck(){let missing=[];db.products.forEach(p=>{let el=document.getElementById('count_'+p.id);if(el){if(el.value===''||!Number.isFinite(Number(el.value))||Number(el.value)<0)missing.push(p.name);}});if(missing.length){alert('残数を正しく入力してください：'+missing.join('、'));return}
+let before=db.products.filter(p=>need(p)>0).length;db.products.forEach(p=>{let el=document.getElementById('count_'+p.id);if(el)p.stock=Number(el.value)});db.orderHidden={};db.lastCheck=new Date().toISOString();db.history.unshift({date:db.lastCheck,type:'在庫チェック',detail:`${db.products.length}商品を確認。発注対象 ${db.products.filter(p=>need(p)>0).length}商品`});persist();alert('在庫チェックを保存しました。発注対象商品を確認してください。');show('orders')}
+function renderOrders(){
+let arr=db.products.filter(p=>need(p)>0&&!db.orderHidden[p.id]);
+document.getElementById('orderList').innerHTML=arr.length?`<div class="panel"><div class="row"><strong>${arr.length}商品が発注対象</strong><span class="pill warn">発注基準に到達</span></div><table><thead><tr><th>商品</th><th>残数</th><th>発注数</th><th>購入先</th><th>優先度</th><th>操作</th></tr></thead><tbody>${arr.map(p=>`<tr><td><strong>${esc(p.name)}</strong><div class="muted">定数 ${p.target}${esc(p.unit)}・入数 ${p.pack}・発注基準：${esc(ruleLabel(p))}</div>${p.guide?`<div class="muted">発注目安：${esc(p.guide)}</div>`:''}</td><td>${p.stock}${esc(p.unit)}</td><td><strong>${need(p)} ${esc(p.pack>1?'購入単位':'個・単位')}</strong></td><td>${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">購入ページへ ↗</a>`:'<span class="muted">URL未登録</span>'}</td><td><strong class="auto-priority" aria-label="${esc(p.name)}の自動優先度">${autoPriority(p)}</strong></td><td><button class="danger" onclick="removeOrderItem('${p.id}')">削除</button></td></tr>`).join('')}</tbody></table><p class="muted">※発注数は購入単位（入数）で切り上げています。注文・決済は購入先サイトで行ってください。</p></div>`:'<div class="empty">現在、表示中の発注商品はありません。<br>商品ごとの発注基準に達するとここに表示されます。</div>'
+}
+function saveOrderPriority(id,value){db.orderPriority=db.orderPriority||{};db.orderPriority[id]=value;localStorage.setItem(KEY,JSON.stringify(db))}
+function removeOrderItem(id){let p=db.products.find(x=>x.id===id);if(!p)return;if(!confirm(`「${p.name}」を発注リストから削除しますか？\\n商品情報と在庫数は削除されません。次回の在庫チェック時に条件を満たしていれば再表示されます。`))return;db.orderHidden[id]=true;persist();renderOrders()}
+function clearOrderList(){let arr=db.products.filter(p=>need(p)>0&&!db.orderHidden[p.id]);if(!arr.length){alert('削除する発注商品はありません。');return}if(!confirm(`表示中の${arr.length}商品を発注リストから一括削除しますか？\\n商品情報と在庫数は削除されません。次回の在庫チェック時に条件を満たしていれば再表示されます。`))return;arr.forEach(p=>db.orderHidden[p.id]=true);persist();renderOrders()}
+
+function saveProduct(){let id=document.getElementById('editId').value,name=document.getElementById('pName').value.trim(),target=Number(document.getElementById('pTarget').value),stock=Number(document.getElementById('pStock').value),pack=Number(document.getElementById('pPack').value),rType=document.getElementById('pRuleType').value,rValue=Number(document.getElementById('pRuleValue').value);if(!name||!Number.isFinite(target)||target<0||!Number.isFinite(stock)||stock<0||!Number.isInteger(pack)||pack<1||!Number.isFinite(rValue)||rValue<0||(rType==='percent'&&rValue>100)){alert('商品名・定数・残数・入数・発注基準を正しく入力してください。');return}
+let p={id:id||crypto.randomUUID(),name,cat:document.getElementById('pCat').value,target,stock,unit:(document.getElementById('pUnitCustom').value.trim()||document.getElementById('pUnit').value),pack,price:Number(document.getElementById('pPrice').value)||0,url:document.getElementById('pUrl').value.trim(),guide:document.getElementById('pGuide').value.trim(),ruleType:rType,ruleValue:rValue};if(p.url&&!/^https?:\/\//i.test(p.url)){alert('購入先URLは https:// または http:// から入力してください。');return}
+let i=db.products.findIndex(x=>x.id===p.id);if(i>=0)db.products[i]=p;else db.products.push(p);db.history.unshift({date:new Date().toISOString(),type:i>=0?'商品情報を編集':'商品を登録',detail:p.name});clearForm();persist();renderProducts()}
+function clearForm(){['editId','pName','pPrice','pUrl','pGuide'].forEach(id=>document.getElementById(id).value='');document.getElementById('pTarget').value=10;document.getElementById('pStock').value=0;document.getElementById('pPack').value=1;document.getElementById('pCat').value=db.categories.includes('猫用フード')?'猫用フード':(db.categories[0]||'その他');document.getElementById('pUnit').value='個';document.getElementById('pUnitCustom').value='';document.getElementById('pRuleType').value='percent';document.getElementById('pRuleValue').value=50;updateRuleInput();document.getElementById('formTitle').textContent='商品を登録'}
+function editProduct(id){let p=db.products.find(x=>x.id===id);if(!p)return;document.getElementById('editId').value=p.id;document.getElementById('pName').value=p.name;document.getElementById('pCat').value=p.cat;document.getElementById('pTarget').value=p.target;document.getElementById('pStock').value=p.stock;let unitOptions=Array.from(document.getElementById('pUnit').options).map(o=>o.value);document.getElementById('pUnit').value=unitOptions.includes(p.unit)?p.unit:'個';document.getElementById('pUnitCustom').value=unitOptions.includes(p.unit)?'':(p.unit||'');document.getElementById('pPack').value=p.pack;document.getElementById('pPrice').value=p.price||'';document.getElementById('pUrl').value=p.url||'';document.getElementById('pGuide').value=p.guide||'';document.getElementById('pRuleType').value=ruleType(p);document.getElementById('pRuleValue').value=ruleValue(p);updateRuleInput();document.getElementById('formTitle').textContent='商品情報を編集';window.scrollTo(0,0)}
+function deleteProduct(id){let p=db.products.find(x=>x.id===id);if(!p||!confirm(`「${p.name}」を商品一覧から削除しますか？`))return;db.products=db.products.filter(x=>x.id!==id);db.history.unshift({date:new Date().toISOString(),type:'商品を削除',detail:p.name});persist();renderProducts()}
+let dragProductId=null,touchDragId=null;
+function finishProductReorder(fromId,toId){
+ if(!fromId||!toId||fromId===toId)return;
+ let from=db.products.findIndex(p=>p.id===fromId),to=db.products.findIndex(p=>p.id===toId);
+ if(from<0||to<0)return;
+ let item=db.products.splice(from,1)[0];db.products.splice(to,0,item);
+ db.history.unshift({date:new Date().toISOString(),type:'商品表示順を変更',detail:item.name});
+ persist();renderProducts();renderCheck();renderOrders();
+}
+function renderProducts(){
+ let q=(document.getElementById('productSearch').value||'').toLowerCase(),arr=db.products.map((p,i)=>({p,i})).filter(x=>x.p.name.toLowerCase().includes(q));
+ document.getElementById('productList').innerHTML=arr.length?`<div class="panel"><p class="muted">左の「≡」をつかんで、上下にスライドして順番を変更できます。順番は在庫チェック画面・発注リストにも反映されます。</p><table><thead><tr><th>移動</th><th>商品</th><th>残数 / 定数</th><th>操作</th></tr></thead><tbody>${arr.map(({p,i})=>`<tr data-product-id="${p.id}" draggable="true" ondragstart="productDragStart(event,'${p.id}')" ondragover="productDragOver(event)" ondrop="productDrop(event,'${p.id}')" ondragend="productDragEnd()"><td><button type="button" class="secondary drag-handle" aria-label="${esc(p.name)}を移動" onpointerdown="productTouchStart(event,'${p.id}')" onpointermove="productTouchMove(event)" onpointerup="productTouchEnd(event)" onpointercancel="productTouchEnd(event)">≡</button></td><td><strong>${esc(p.name)}</strong><div class="muted">${esc(p.cat)}</div>${p.guide?`<div class="muted">発注目安：${esc(p.guide)}</div>`:''}</td><td>${p.stock} / ${p.target} ${esc(p.unit)}${need(p)>0?' <span class="pill warn">発注対象</span>':''}</td><td><button class="secondary" onclick="editProduct('${p.id}')">編集</button> <button class="danger" onclick="deleteProduct('${p.id}')">削除</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">登録商品はまだありません。</div>'
+}
+function productDragStart(e,id){dragProductId=id;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',id);e.currentTarget.classList.add('dragging')}
+function productDragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';document.querySelectorAll('#productList tr.drag-over').forEach(x=>x.classList.remove('drag-over'));let tr=e.target.closest('tr[data-product-id]');if(tr)tr.classList.add('drag-over')}
+function productDrop(e,targetId){e.preventDefault();let from=dragProductId||e.dataTransfer.getData('text/plain');finishProductReorder(from,targetId);productDragEnd()}
+function productDragEnd(){dragProductId=null;document.querySelectorAll('#productList tr').forEach(x=>x.classList.remove('dragging','drag-over'))}
+function productTouchStart(e,id){if(e.pointerType==='mouse')return;touchDragId=id;e.currentTarget.setPointerCapture(e.pointerId);e.currentTarget.closest('tr').classList.add('dragging');e.preventDefault()}
+function productTouchMove(e){if(!touchDragId)return;let el=document.elementFromPoint(e.clientX,e.clientY),tr=el&&el.closest('#productList tr[data-product-id]');document.querySelectorAll('#productList tr.drag-over').forEach(x=>x.classList.remove('drag-over'));if(tr&&tr.dataset.productId!==touchDragId)tr.classList.add('drag-over');e.preventDefault()}
+function productTouchEnd(e){if(!touchDragId)return;let el=document.elementFromPoint(e.clientX,e.clientY),tr=el&&el.closest('#productList tr[data-product-id]'),target=tr&&tr.dataset.productId,from=touchDragId;touchDragId=null;productDragEnd();if(target)finishProductReorder(from,target);e.preventDefault()}
+
+function renderHistory(){document.getElementById('historyList').innerHTML=db.history.length?'<div class="panel">'+db.history.map(h=>`<div style="padding:10px 0;border-bottom:1px solid var(--line)"><strong>${esc(h.type)}</strong><div>${esc(h.detail)}</div><div class="muted">${new Date(h.date).toLocaleString('ja-JP')}</div></div>`).join('')+'</div>':'<div class="empty">履歴はまだありません。</div>'}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='nonnon_inventory_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+  alert('データを書き出しました。ダウンロードしたJSONファイルを大切に保管してください。');
+}
+function importData(event){
+  const file=event.target.files&&event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const incoming=JSON.parse(reader.result);
+      if(!incoming||!Array.isArray(incoming.products)||!Array.isArray(incoming.history))throw new Error('形式');
+      if(!confirm('現在このタブレットに保存されているデータを、読み込むファイルの内容に置き換えます。よろしいですか？'))return;
+      db=incoming;
+      db.categories=Array.isArray(db.categories)?db.categories:DEFAULT_CATEGORIES.slice();
+      db.orderNotes=db.orderNotes||{};db.orderHidden=db.orderHidden||{};db.orderPriority=db.orderPriority||{};
+      db.products.forEach(p=>{if(p.cat&&!db.categories.includes(p.cat))db.categories.push(p.cat);if(!p.ruleType)p.ruleType='percent';if(p.ruleValue===undefined||p.ruleValue===null)p.ruleValue=p.ruleType==='quantity'?1:50;});
+      if(!db.categories.includes('その他'))db.categories.push('その他');
+      persist();show('home');
+      alert('データを読み込みました。');
+    }catch(e){alert('このファイルは在庫データとして読み込めませんでした。');}
+    finally{event.target.value='';}
+  };
+  reader.readAsText(file);
+}
+
+refresh();
+</script></body></html>
